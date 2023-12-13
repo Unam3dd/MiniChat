@@ -2,8 +2,8 @@ AUTHOR = Unam3dd
 GITHUB = https://github.com/Unam3dd
 VERSION = 0.0.1
 DISTRO=$(shell cat /etc/os-release | grep "^ID" | head -n1 | cut -d '=' -f2)
-PROJECT_NAME = libsupermath
-IS_LIBRARY=true
+PROJECT_NAME = minichat
+IS_LIBRARY=false
 
 RED							:= \033[38;5;196m
 GREEN						:= \033[38;5;82m
@@ -45,8 +45,8 @@ HASH=0
 # Name of the project
 
 FILENAME = $(PROJECT_NAME)
-NAME = $(DIST)/$(FILENAME).so
-STATIC_NAME = $(DIST)/$(FILENAME).a
+NAME = $(DIST)/$(FILENAME).out
+STATIC_NAME = $(DIST)/$(FILENAME).static.out
 
 SRCS = $(shell ls $(SRCS_DIR)/*.c 2>/dev/null)
 OBJS = $(addprefix $(OBJDIR)/, $(SRCS:.c=.o)) 
@@ -58,7 +58,7 @@ vpath %.h $(INCLUDES_DIR)
 
 # Compiler Options
 CC   = gcc
-CFLAGS = -Wall -Wextra -Werror -Iinc -pedantic -DVERSION=\"$(VERSION)\"
+CFLAGS = -Wall -Wextra -Werror -Iinc -DVERSION=\"$(VERSION)\"
 COMPILER_VERSION = $(shell $(CC) --version | head -n1)
 
 ifeq ($(IS_LIBRARY), true)
@@ -99,18 +99,10 @@ define banner
 
 $(PURPLE)
 
-	
-	 ██▓███   ██▀███   ▒█████   ▄▄▄██▀▀▀▓█████  ▄████▄  ▄▄▄█████▓
-	▓██░  ██▒▓██ ▒ ██▒▒██▒  ██▒   ▒██   ▓█   ▀ ▒██▀ ▀█  ▓  ██▒ ▓▒
-	▓██░ ██▓▒▓██ ░▄█ ▒▒██░  ██▒   ░██   ▒███   ▒▓█    ▄ ▒ ▓██░ ▒░
-	▒██▄█▓▒ ▒▒██▀▀█▄  ▒██   ██░▓██▄██▓  ▒▓█  ▄ ▒▓▓▄ ▄██▒░ ▓██▓ ░ 
-	▒██▒ ░  ░░██▓ ▒██▒░ ████▓▒░ ▓███▒   ░▒████▒▒ ▓███▀ ░  ▒██▒ ░ 
-	▒▓▒░ ░  ░░ ▒▓ ░▒▓░░ ▒░▒░▒░  ▒▓▒▒░   ░░ ▒░ ░░ ░▒ ▒  ░  ▒ ░░   
-	░▒ ░       ░▒ ░ ▒░  ░ ▒ ▒░  ▒ ░▒░    ░ ░  ░  ░  ▒       ░    
-	░░         ░░   ░ ░ ░ ░ ▒   ░ ░ ░      ░   ░          ░      
-	            ░         ░ ░   ░   ░      ░  ░░ ░               
-	                                           ░                 
-
+	_______ _____ __   _ _____ _______ _     _ _______ _______
+	|  |  |   |   | \  |   |   |       |_____| |_____|    |   
+	|  |  | __|__ |  \_| __|__ |_____  |     | |     |    |   
+                                                           
 
 			$(GREEN)Version: $(PURPLE)$(VERSION)
 			$(GREEN)Author: $(PURPLE)$(AUTHOR)
@@ -199,7 +191,7 @@ static: $(OBJDIR) $(OBJS)
 ifeq ($(IS_LIBRARY), true)
 	@ar -rcs $(STATIC_NAME) $(OBJS)
 else
-	$(CC) $(CFLAGS) $(OBJS) -static -o $(NAME)
+	$(CC) $(CFLAGS) $(OBJS) -static -o $(STATIC_NAME)
 endif
 
 clean:
