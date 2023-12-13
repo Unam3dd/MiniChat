@@ -7,10 +7,9 @@
 /////////////////////////////////
 
 #include <arpa/inet.h>
-#include <asm-generic/errno-base.h>
-#include <asm-generic/socket.h>
 #include <netinet/in.h>
 #include <stdint.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -29,7 +28,7 @@
 void	server_select_signal(int signum)
 {
 	(void)signum;
-	printf("[+] CTRL+C Catched !");
+	printf("[+] CTRL+C Catched !\n");
 }
 
 //////////////////////////////////
@@ -106,6 +105,7 @@ int	server_select_listen(server_t *s, const char *addr, port_t port)
 
 int	server_select_accept(fd_t sfd)
 {
+	char		buf[0x100];
 	sin_t		sin;
 	socklen_t	len = sizeof(sin_t);
 	client_t	client;
@@ -117,10 +117,15 @@ int	server_select_accept(fd_t sfd)
 		perror("accept");
 		return (-1);
 	}
-	
-	printf("[" GREEN "+" RST"] New client connected to the server %x:%x ("GREEN"%s"RST":"GREEN"%d"RST") !\n", sin.sin_addr.s_addr, sin.sin_port, inet_ntoa(sin.sin_addr), ntohs(sin.sin_port));
+
+	memset(buf, 0, sizeof(buf));
+
+	sprintf(buf, "[" GREEN "+" RST"] Server : New client connected to the server %x:%x ("GREEN"%s"RST":"GREEN"%d"RST") !\n", sin.sin_addr.s_addr, sin.sin_port, inet_ntoa(sin.sin_addr), ntohs(sin.sin_port));
 
 	add_client(&client);
+	
+	printf("%s", buf);
+	send_msg_clients(client.id, buf, strlen(buf));
 
 	return (client.fd);
 }
@@ -135,12 +140,13 @@ int	server_select_accept(fd_t sfd)
 int	server_select_wait(server_t *s)
 {
 	if (!s) return (1);
-	
+
 	client_t	*clients = NULL;
 	fd_set	read_fds, save_fds;
 	size_t		size = 0;
 	uint32_t	i = 0;
 	fd_t		fd = 0;
+	int			status = 0;
 
 	signal(SIGINT, server_select_signal);
 
@@ -168,9 +174,14 @@ int	server_select_wait(server_t *s)
 
 		for (i = 0; i < size; i++) {
 			if (clients[i].fd && FD_ISSET(clients[i].fd, &read_fds)) {
-				server_select_handle(&clients[i]);
-				FD_CLR(clients[i].fd, &save_fds);
-				remove_client(&clients[i]);
+				status = server_select_handle(clients, size, &clients[i]);
+				
+				if (status == 1) {
+					FD_CLR(clients[i].fd, &save_fds);
+					remove_client(&clients[i]);
+				}
+
+				if (status < 0) break ;
 			}
 		}
 	}
@@ -178,7 +189,6 @@ int	server_select_wait(server_t *s)
 
 	for (i = 0; i < size; i++) {
 		FD_CLR(clients[i].fd, &save_fds);
-		if (clients[i].buf) free((void *)clients[i].buf);
 		close(clients[i].fd);
 		memset(&clients[i], 0, sizeof(client_t));
 	}
@@ -191,19 +201,42 @@ int	server_select_wait(server_t *s)
 	return (0);
 }
 
-int	server_select_handle(client_t *client)
+int	server_select_handle(client_t *clients, size_t nb, client_t *client)
 {
-	char	buf[0x100];
-	int		size = 0;
+	if (!clients) return (1);
 
-	if ((size = read(client->fd, buf, sizeof(buf))) < 0) {
+	char		buf[BUF_SIZE];
+	char		*token = NULL;
+	int			size = 0;
+	uint32_t 	i = 0;
+
+	memset(buf, 0, sizeof(buf));
+
+	size = recv(client->fd, buf, sizeof(buf), 0);
+
+	if (!size) return (1);
+
+	if (size < 0) {
 		perror("read");
-		return (1);
+		return (-1);
 	}
 
 	buf[size] = 0;
 
-	printf("["GREEN"+"RST"] client %d: %s", client->id, buf);
+	token = strtok(buf, "\n");
+
+	while (token) {
+		
+		for (i = 0; i < nb; i++) {
+			
+			if (client->id == clients[i].id || clients[i].fd <= 0) continue ;
+			
+			dprintf(clients[i].fd, "["GREEN"+"RST"] client %d: %s\n", client->id, token);
+		}
+
+		token = strtok(NULL, "\n");
+	}
+
 
 	return (0);
 }
@@ -223,7 +256,6 @@ int	server_select_close(server_t *server)
 	printf("[" GREEN "+" RST"] Server closed !\n");
 
 	SERVER_ZERO(*server);
-
 
 	return (0);
 }

@@ -37,6 +37,7 @@
 /////////////////////////////////
 
 #define MAX_THREAD 4
+#define BUF_SIZE 0x100
 
 //////////////////////////////////
 //
@@ -101,7 +102,7 @@ struct server_t {
 
 //////////////////////////////////
 //
-//	       STATIC CLIENTS
+//	       CLIENTS
 //
 /////////////////////////////////
 
@@ -110,6 +111,7 @@ client_id_t	get_current_id(void);
 int			add_client(client_t *client);
 int			remove_client(client_t *client);
 int			remove_client_by_id(client_id_t id);
+void		send_msg_clients(client_id_t author, const char *buf, size_t size);
 
 //////////////////////////////////
 //
@@ -120,7 +122,7 @@ int			remove_client_by_id(client_id_t id);
 int		server_select_init(server_t	*server);
 int		server_select_listen(server_t *s, const char *addr, port_t port);
 int		server_select_accept(fd_t sfd);
-int		server_select_handle(client_t *client);
+int		server_select_handle(client_t *clients, size_t nb, client_t *client);
 int		server_select_wait(server_t *s);
 int		server_select_close(server_t *server);
 void	server_select_signal(int signum);
