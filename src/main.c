@@ -1,8 +1,16 @@
 #include "mini_chat.h"
-#include <stdio.h>
 
 int main(void)
 {
-	printf("hello world !\n");
+	SERVER_INITIALIZE(server);
+
+	SERVER_USE_SELECT(server);
+
+	SERVER_START(server, "127.0.0.1", 8081);
+
+	SERVER_WAIT(server);
+
+	SERVER_CLOSE(server);
+
 	return (0);
 }
