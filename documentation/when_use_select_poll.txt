@@ -1,0 +1,104 @@
+After encountering EWOULDBLOCK due to filling up the sending buffers of the OS, one can use select() to wait on both receiving and sending sockets. This method will proceed if new data arrives on the receiving socket or if some of the buffers are freed, allowing for more data to be written to the sending socket - whichever happens first. This approach is commonly used when dealing with multiple sockets to read from and/or write to, or when data must be passed between two sockets in both directions.
+
+
+Socket select ()versus non-block recv
+Solution 1:
+
+To prevent infinite consumption of CPU time, it is necessary to have some additional method for waiting for data on the socket when using non-blocking call to recv.
+
+Assuming there are no other sockets to inspect or tasks to perform in the same thread, a blocking read call would be the most effective solution. Nonetheless, assessing its efficiency in such a scenario may be considered premature optimization.
+
+The socket count is typically the only factor that prompts such considerations to be taken into account.
+
+Non-blocking calls exhibit swifter performance solely when dealing with numerous sockets on one thread.
+
+Solution 2:
+
+When non-blocking IO is utilized and no data is present,  recv()  will promptly return. In such a scenario, it is necessary to repeatedly call  recv()  until data becomes available. This can cause the CPU to be used unnecessarily.
+
+Performing excessive computations on  recv()  can cause unwanted CPU usage. It is preferable to have the process wait until data is available and be awakened, which is the functionality offered by  select()/poll()  and similar methods.
+
+Implementing  sleep()  repeatedly within a loop to prevent CPU overheating is not a viable option. This approach would result in significant processing delays as the program would be unable to process data promptly upon its availability.
+
+Solution 3:
+
+With  select()  and its companions, you can arrange the workflow to prevent one socket's sluggishness from affecting the speed of another. For instance, suppose that data is coming in rapidly from the receiving socket, and you want to receive it as quickly as possible and store it in memory buffers. However, the sending socket is slow. When the OS's sending buffers are full and  send()  returns EWOULDBLOCK, you can utilize select() to wait on both the receiving and sending sockets.  select()  will proceed whenever new data arrives on the receiving socket or buffers are freed up, allowing you to write more data to the sending socket, whichever comes first.
+
+Certainly, a practical scenario where  select()  could be employed is when there are several sockets that require reading and/or writing, or when data needs to be transmitted between two sockets in both directions.
+
+By utilizing  select()  , you can determine when a socket is ready for a read or write operation. It is advisable to only attempt a read or write when select confirms that the socket is ready. However, it is still not recommended to make the sockets non-blocking as there may be exceptional cases when the next operation can still be blocked despite  select()  indicating that the socket is "ready".
+
+Avoiding the use of  select()  is typically not recommended, as explained by @Troy, when opting to make sockets non-blocking.
+
+Select(), recv() and EWOULDBLOCK on non-blocking, For recv () you would get EAGAIN rather than EWOULDBLOCK, and yes it is possible. Since you have just checked with select () then one of two things happened: Something else (another thread) has drained the input buffer between select () and recv (). A receive timeout was set on the socket and it …
+
+Non Blocking recv() in C Sockets
+Solution 1:
+
+ Is the above-provided code acceptable in that scenario? 
+
+There is no indication to select. Additionally, if the intention is for "maxsd" to serve as the initial argument of select, then its value is incorrect. It should represent the largest file descriptor value plus one. Nevertheless, you can opt to utilize recv with the MSG_DONTWAIT flag instead, which would yield an error in the absence of data to be read.
+
+Solution 2:
+
+The answer to whether you have a  select  call in your actual code depends on certain factors.
+
+Regarding blocking, if your socket is set in the read-set by  select  , calling  recv  will not block. However, the amount of available data is not guaranteed. When using UDP, there will be at least one complete packet, whereas with TCP, you may only receive one byte. In cases where there are message boundaries, calling  recv  in a loop is necessary to retrieve the entire message. Unfortunately, this approach will eventually result in  recv  blocking.
+
+To summarize, while  select  can be useful, it may not be effective in every scenario. The sole method to ensure that a  recv  call does not cause a block is by changing the socket to a non-blocking mode.
+
+Solution 3:
+
+I'm uncertain about your intentions, but I can consider two possibilities.
+
+Configure a socket to operate in the non-blocking mode.
+
+As it appears that you possess just a single socket, you can switch it to non-blocking mode utilizing  fcntl  and subsequently invoke  recv()  .
+
+fcntl(sock, F_SETFL, fcntl(sock, F_GETFL) | O_NONBLOCK);
+// if fcntl returns no error, sock is now non-blocking
+
+Initiate the timer selection.
+
+With the help of  select  , it is possible to establish a timer that will compel the return, regardless of whether any data was received, after a certain amount of time has elapsed.
+
+C - socket select ()versus non-block recv, On the other hand, making the sockets non-blocking and not using select() is almost never advisable because of the reason explained by @Troy. Share. Follow edited May 23, 2017 at 10:31. Community Bot. 1 1 1 select(), recv() and EWOULDBLOCK on non-blocking sockets. 0.
+
+Nonblocking sockets with Select
+Solution 1:
+
+The C10K Problem provides a comprehensive assessment of numerous high-volume I/O techniques, as of 2006.
+
+Referring to the utilization of  select  on sockets that are not obstructive, as stated in the quote.
+
+ It's crucial to keep in mind that the readiness notification from the kernel is just a suggestion, and it's possible that the file descriptor may not be ready for reading when attempted. Thus, using nonblocking mode is vital while utilizing readiness notification. 
+
+Instead of using non-blocking sockets and a loop to wait for data, there are more efficient options available such as  select  or one of the newer alternatives like  epoll  ,  kqueue  , etc. It is difficult to imagine a scenario where using non-blocking sockets would be necessary since most options have a timeout feature that can wake up the program after a set period. One exception might be if the program is running a CPU-intensive task like a video game where it needs to keep computing and periodically check for I/O using non-blocking sockets.
+
+Solution 2:
+
+The various facilities, such as  select  ,  poll  ,  epoll  ,  kqueue  , and others, are designed to handle multiple socket/file descriptors in various scenarios. For instance, consider a web-server that is heavily loaded and has hundreds of sockets connected simultaneously. In such a scenario, it can be challenging to determine when to perform  read  without causing everything to be blocked.
+
+Solution 3:
+
+When using  read  on a non-blocking socket, it will promptly return if no data has been received since the previous call to  read  . However, if you only possess  read  and wish to wait until data is available, you would need to use a busy wait method, which is not efficient and wastes CPU.
+
+The  poll  and  select  (and their companions) provide the ability to stay idle until there is information to be processed, whether it be reading, writing, or receiving a signal.
+
+Using a non-blocking socket is recommended if you are solely sending and receiving on it. Asynchronicity is crucial when you have other tasks to perform concurrently, like managing other sockets or updating a GUI.
+
+Non Blocking recv() in C Sockets, Yes, use the answer from Evans. fcntl is portable, so you should use this. recv will return -1 and errno is EAGAIN or EWOULDBLOCK if there is no data to read. If the returnvalue is 0 the socket has been properly closed, otherwise it returns as much as there is currently available.
+Proper handling of EWOULDBLOCK with polling on a non-blocking socket
+Solution:
+
+ I'm not certain about the specific situations in which send() might result in an EWOULDBLOCK error. 
+
+In case the sending-buffer, which is usually held in the TCP/IP stack by the operating system, becomes full and the receiver hasn't acknowledged any of the transmitted bits, the stack will have to retain the entire content of the buffer to ensure that a resend is possible if needed.
+
+ What is the appropriate course of action for managing such an occurrence? 
+
+One must wait for the counterpart to acknowledge the packets sent in order to free up space for more sending. Classical  select  and modern  epoll  provide smart ways to wait for reading, writing, or whichever happens first. This waiting is the typical reason for  epoll  events, and it can be performed in other operating systems such as  kqueue  .
+
+Understanding EWOULDBLOCK on non blocking sockets, Basically WEB server on the router openes syslog file (/var/log/messages), read all the log messages and try to send it over this WEB socket to client GUI application on user request. Its a non blocking socket. So I observed that when the number of messages are huge (size of send buffer is …
+
+

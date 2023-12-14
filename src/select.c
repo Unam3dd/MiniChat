@@ -174,7 +174,7 @@ int	server_select_wait(server_t *s)
 
 		for (i = 0; i < size; i++) {
 			if (clients[i].fd && FD_ISSET(clients[i].fd, &read_fds)) {
-				status = server_select_handle(clients, size, &clients[i]);
+				status = server_select_handle(&clients[i]);
 				
 				if (status == 1) {
 					FD_CLR(clients[i].fd, &save_fds);
@@ -201,14 +201,14 @@ int	server_select_wait(server_t *s)
 	return (0);
 }
 
-int	server_select_handle(client_t *clients, size_t nb, client_t *client)
+int	server_select_handle(client_t *client)
 {
-	if (!clients) return (1);
+	if (!client) return (0);
 
-	char		buf[BUF_SIZE];
+	static char	buf[BUF_SIZE];
+	char		snd[0x200];
 	char		*token = NULL;
 	int			size = 0;
-	uint32_t 	i = 0;
 
 	memset(buf, 0, sizeof(buf));
 
@@ -226,17 +226,15 @@ int	server_select_handle(client_t *clients, size_t nb, client_t *client)
 	token = strtok(buf, "\n");
 
 	while (token) {
-		
-		for (i = 0; i < nb; i++) {
-			
-			if (client->id == clients[i].id || clients[i].fd <= 0) continue ;
-			
-			dprintf(clients[i].fd, "["GREEN"+"RST"] client %d: %s\n", client->id, token);
-		}
+
+		memset(snd, 0, sizeof(snd));
+
+		sprintf(snd, "["GREEN "+"RST"] client %d: %s\n", client->id, token);
+	
+		send_msg_clients(client->id, snd, strlen(snd));
 
 		token = strtok(NULL, "\n");
 	}
-
 
 	return (0);
 }
