@@ -227,6 +227,8 @@ int	server_select_handle(client_t *client)
 
 	while (token) {
 
+		if (!strcmp(token, "version")) send_version(client);
+
 		memset(snd, 0, sizeof(snd));
 
 		sprintf(snd, "["GREEN "+"RST"] client %d: %s\n", client->id, token);

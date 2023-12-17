@@ -88,6 +88,7 @@ int	remove_client(client_t *client)
 		}
 
 		sprintf(buf, "[" GREEN "+" RST"] client (%d) : %s:%d just disconnected !\n", client->id, inet_ntoa(sin.sin_addr), ntohs(sin.sin_port));
+		write(1, buf, strlen(buf));
 		send_msg_clients(client->id, buf, strlen(buf));
 		close(clients[i].fd);
 		memset(&clients[i], 0, sizeof(client_t));

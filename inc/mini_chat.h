@@ -153,6 +153,14 @@ int		server_epoll_close(server_t *server);
 
 server_t	*get_server_instance(server_t *server);
 
+///////////////////////////////
+//
+//			VERSION
+//
+//////////////////////////////
+
+void	send_version(client_t *client);
+
 //////////////////////////////////
 //
 //	       MACRO
