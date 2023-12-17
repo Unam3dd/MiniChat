@@ -48,6 +48,7 @@
 typedef struct client_t 			client_t;
 typedef struct server_t 			server_t;
 typedef struct server_callbacks_t	server_callbacks_t;
+typedef struct command_callbacks_t	command_callbacks_t;
 typedef struct sockaddr_in			sin_t;
 typedef uint16_t					port_t;
 typedef uint32_t					client_id_t;

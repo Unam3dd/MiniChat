@@ -23,6 +23,8 @@ int main(int ac, char **av)
 		return (1);
 	}
 
+	display_banner(av);
+
 	SERVER_INITIALIZE(server);
 
 	SERVER_USE_SELECT(server);
