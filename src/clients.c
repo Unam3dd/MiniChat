@@ -71,7 +71,7 @@ int	remove_client(client_t *client)
 {
 	if (!client) return (1);
 
-	char		buf[BUFSIZ];
+	char		buf[BUF_SIZE];
 	sin_t		sin;
 	client_t	*clients = NULL;
 	size_t		size = 0;

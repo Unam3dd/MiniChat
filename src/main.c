@@ -2,8 +2,9 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
-void	display_banner(char **av)
+static void	display_banner(void)
 {
 	printf(
 			PURPLE"	_______ _____ __   _ _____ _______ _     _ _______ _______\n"
@@ -11,23 +12,30 @@ void	display_banner(char **av)
 			"	|  |  | __|__ |  \\_| __|__ |_____  |     | |     |    | \n"
 			"\n\n\t\tVersion: "GREEN VERSION PURPLE"\n\t\tAuthor: "GREEN"Unam3dd\n\n"RST
 			);
+}
 
-	printf("usage : "GREEN"%s"RST" <addr> <port>\n\t"GREEN"%s"RST" 127.0.0.1 8081\n\t"GREEN"%s"RST " 192.168.1.63 8081\n\n",\
-			av[0], av[0], av[0]);
+static int show_help(const char *name)
+{
+
+	display_banner();
+	printf("usage : "GREEN"%s"RST" <addr> <port>\n\t"GREEN"%s"RST" 127.0.0.1 8081 --["GREEN"select/poll/epoll"RST"]\n"
+			"\t"GREEN"%s"RST " 192.168.1.63 8081 --["GREEN"select/poll/epoll"RST"]\n\n\tOptions:\n",\
+		name, name, name);
+	printf("\t\t"GREEN"--select"RST" | start a server with select\n"
+		   "\t\t"GREEN"--poll"RST"	 | start a server with poll\n"
+		   "\t\t"GREEN"--epoll"RST"  | start a server with epoll\n\n");
+	return (1);
 }
 
 int main(int ac, char **av)
 {
-	if (ac != 3) {
-		display_banner(av);
-		return (1);
-	}
+	if (ac != 4) return (show_help(av[0]));
 
-	display_banner(av);
+	display_banner();
 
 	SERVER_INITIALIZE(server);
 
-	SERVER_USE_SELECT(server);
+	SERVER_OPTIONS(server);
 
 	SERVER_START(server, av[1], (uint16_t)atoi(av[2]));
 

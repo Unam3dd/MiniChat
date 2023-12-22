@@ -121,10 +121,10 @@ void		send_msg_clients(client_id_t author, const char *buf, size_t size);
 /////////////////////////////////
 
 int		server_select_init(server_t	*server);
+int		server_select_wait(server_t *s);
 int		server_select_listen(server_t *s, const char *addr, port_t port);
 int		server_select_accept(fd_t sfd);
 int		server_select_handle(client_t *client);
-int		server_select_wait(server_t *s);
 int		server_select_close(server_t *server);
 void	server_select_signal(int signum);
 
@@ -135,7 +135,12 @@ void	server_select_signal(int signum);
 /////////////////////////////////
 
 int		server_poll_init(server_t *server);
+int		server_poll_wait(server_t *server);
+int		server_poll_listen(server_t *server, const char *addr, port_t port);
+int		server_poll_accept(fd_t sfd);
+int		server_poll_handle(client_t *client);
 int		server_poll_close(server_t *server);
+void	server_poll_signal(int signum);
 
 //////////////////////////////////
 //
@@ -144,7 +149,12 @@ int		server_poll_close(server_t *server);
 /////////////////////////////////
 
 int		server_epoll_init(server_t *server);
+int		server_epoll_wait(server_t *server);
+int		server_epoll_listen(server_t *server, const char *addr, port_t port);
+int		server_epoll_accept(fd_t sfd);
+int		server_epoll_handle(client_t *client);
 int		server_epoll_close(server_t *server);
+void	server_epoll_signal(int signum);
 
 //////////////////////////////////
 //
@@ -194,6 +204,21 @@ void	send_version(client_t *client);
 	name.cb.listen = server_select_listen;\
 	name.cb.wait = server_select_wait;\
 	name.cb.close = server_select_close;\
+	name.flags = SELECT;\
+
+#define SERVER_USE_POLL(name)\
+	name.cb.init = server_poll_init;\
+	name.cb.listen = server_poll_listen;\
+	name.cb.wait = server_poll_wait;\
+	name.cb.close = server_poll_close;\
+	name.flags = POLL;\
+
+#define SERVER_USE_EPOLL(name)\
+	name.cb.init = server_select_init;\
+	name.cb.listen = server_select_listen;\
+	name.cb.wait = server_select_wait;\
+	name.cb.close = server_select_close;\
+	name.flags = EPOLL;\
 
 #define SERVER_CLOSE(name) {\
 	if (name.cb.close && name.cb.close(&name)) {\
@@ -201,5 +226,11 @@ void	send_version(client_t *client);
 		return (1);\
 	}\
 }
+
+#define SERVER_OPTIONS(server)\
+	if (!strcmp(av[3], "--select")) { SERVER_USE_SELECT(server); }\
+	else if (!strcmp(av[3], "--poll")) { SERVER_USE_POLL(server); }\
+	else if (!strcmp(av[3], "--epoll")) { SERVER_USE_EPOLL(server); }\
+	else return (fprintf(stderr, "options error : %s not found !\n", av[0]), 1); 
 
 #endif

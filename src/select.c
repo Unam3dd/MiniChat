@@ -7,6 +7,7 @@
 /////////////////////////////////
 
 #include <arpa/inet.h>
+#include <asm-generic/socket.h>
 #include <netinet/in.h>
 #include <stdint.h>
 #include <string.h>
@@ -48,7 +49,7 @@ int	server_select_init(server_t *server)
 		return (1);
 	}
 
-	if (setsockopt(server->fd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0) {
+	if (setsockopt(server->fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &(int){1}, sizeof(int)) < 0) {
 		perror("setsockopt");
 		return (1);
 	}
@@ -105,7 +106,7 @@ int	server_select_listen(server_t *s, const char *addr, port_t port)
 
 int	server_select_accept(fd_t sfd)
 {
-	char		buf[0x100];
+	char		buf[BUF_SIZE];
 	sin_t		sin;
 	socklen_t	len = sizeof(sin_t);
 	client_t	client;
