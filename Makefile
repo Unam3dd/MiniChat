@@ -231,7 +231,7 @@ hash: $(STATIC_NAME) $(NAME) BANNER build
 
 %.test: %.c
 	$(CC) -Wall -Wextra -Werror $< -o $@ -I./inc -lcriterion
-	./$@
+	./$@ --verbose=1
 
 test:
 	@docker build -t test_$(PROJECT_NAME) containers/test/
@@ -240,6 +240,7 @@ test:
 	@docker rm test_$(PROJECT_NAME)
 
 build_test: $(TEST_OBJS)
+	@./test/runtest.sh
 
 test_clean:
 	@rm -rf $(TEST_OBJS)
