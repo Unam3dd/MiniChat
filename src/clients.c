@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 //////////////////////////////////
 //
@@ -12,7 +13,8 @@
 //
 /////////////////////////////////
 
-client_t	*get_clients(bool clear, size_t *nmemb, size_t *size)
+
+client_t      *gselect(bool clear, size_t *nmemb, size_t *size)
 {
 	static client_t	clients[FD_SETSIZE];
 
@@ -22,7 +24,29 @@ client_t	*get_clients(bool clear, size_t *nmemb, size_t *size)
 
 	if (clear) memset(clients, 0, sizeof(clients));
 
-	return (clients);
+    return (clients);
+}
+
+client_t    *gclients(bool clear, size_t *nmemb, size_t *size)
+{
+    static client_t clients[MAX_CLIENTS];
+
+    if (nmemb) *nmemb = sizeof(clients);
+
+    if (size) *size = sizeof(clients) / sizeof(client_t);
+
+    if (clear) memset(clients, 0, sizeof(clients));
+
+    return (clients);
+}
+
+client_t	*get_clients(bool clear, size_t *nmemb, size_t *size)
+{
+    server_t    *s = get_server_instance(NULL);
+
+    if (s && s->flags & SELECT) return (gselect(clear, nmemb, size));
+
+    return (gclients(clear, nmemb, size));
 }
 
 client_id_t	get_current_id(void)

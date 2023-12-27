@@ -10,9 +10,9 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <sys/poll.h>
 #include <unistd.h>
 
 //////////////////////////////////
@@ -38,6 +38,8 @@
 
 #define MAX_THREAD 4
 #define BUF_SIZE 0x100
+#define MAX_CLIENTS 0x1000
+#define EVENT_MAX 0x1000
 
 //////////////////////////////////
 //
@@ -49,6 +51,7 @@ typedef struct client_t 			client_t;
 typedef struct server_t 			server_t;
 typedef struct server_callbacks_t	server_callbacks_t;
 typedef struct command_callbacks_t	command_callbacks_t;
+typedef struct client_list_t        client_list_t;
 typedef struct sockaddr_in			sin_t;
 typedef uint16_t					port_t;
 typedef uint32_t					client_id_t;
@@ -98,7 +101,6 @@ struct server_t {
 	fd_t				fd;
 	multiplex_opt_t		flags;
 	bool				pool;
-	bool				stoped;
 };
 
 //////////////////////////////////
@@ -107,6 +109,8 @@ struct server_t {
 //
 /////////////////////////////////
 
+client_t    *gselect(bool clear, size_t *nmemb, size_t *size);
+client_t    *gclients(bool clear, size_t *nmemb, size_t *size);
 client_t	*get_clients(bool clear, size_t *nmemb, size_t *size);
 client_id_t	get_current_id(void);
 int			add_client(client_t *client);
@@ -137,7 +141,7 @@ void	server_select_signal(int signum);
 int		server_poll_init(server_t *server);
 int		server_poll_wait(server_t *server);
 int		server_poll_listen(server_t *server, const char *addr, port_t port);
-int		server_poll_accept(fd_t sfd);
+int		server_poll_accept(fd_t sfd, struct pollfd *pfds);
 int		server_poll_handle(client_t *client);
 int		server_poll_close(server_t *server);
 void	server_poll_signal(int signum);

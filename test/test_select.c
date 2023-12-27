@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include "mini_chat.h"
-#include <stdio.h>
 
 #define TEST_SELECT_SERVER_HOST "127.0.0.1"
 #define TEST_SELECT_SERVER_PORT 8081
@@ -84,3 +83,4 @@ Test(select_test, get_select_server_version)
 
     close(fd);
 }
+

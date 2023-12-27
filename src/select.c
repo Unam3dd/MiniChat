@@ -131,6 +131,23 @@ int	server_select_accept(fd_t sfd)
 	return (client.fd);
 }
 
+static void clear_client(fd_set *read_fds, fd_set *save_fds)
+{
+    client_t    *clients = NULL;
+    size_t      size = 0;
+    size_t      i = 0;
+
+    FD_ZERO(read_fds);
+
+    clients = get_clients(0, NULL, &size);
+
+    for (i = 0; i < size; i++) {
+        FD_CLR(clients[i].fd, save_fds);
+        close(clients[i].fd);
+    }
+
+    memset(clients, 0, (sizeof(client_t) * size));
+}
 
 //////////////////////////////////
 //
@@ -186,17 +203,11 @@ int	server_select_wait(server_t *s)
 			}
 		}
 	}
-	
 
-	for (i = 0; i < size; i++) {
-		FD_CLR(clients[i].fd, &save_fds);
-		close(clients[i].fd);
-		memset(&clients[i], 0, sizeof(client_t));
-	}
+    clear_client(&read_fds, &save_fds);
 
 	FD_CLR(s->fd, &save_fds);
 
-	FD_ZERO(&read_fds);
 	FD_ZERO(&save_fds);
 
 	return (0);
