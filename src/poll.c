@@ -2,9 +2,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <stdio.h>
-#define _GNU_SOURCE
 #include <sys/poll.h>
-#include <signal.h>
 
 int		server_poll_init(server_t *server)
 {
@@ -116,7 +114,7 @@ int		server_poll_accept(fd_t sfd, struct pollfd *pfds)
         memset(&pfds[i], 0, sizeof(struct pollfd));
 
         pfds[i].fd = fd;
-        pfds[i].events = POLLIN;
+        pfds[i].events = POLLIN | POLLHUP;
         clients[i].fd = fd;
         clients[i].id = get_current_id();
     }
@@ -129,10 +127,15 @@ int		server_poll_handle(client_t *client)
     if (!client) return (1);
 
     char    buf[0x100];
+    int     bytes = 0;
 
     memset(buf, 0, sizeof(buf));
 
-    recv(client->fd, buf, sizeof(buf), 0);
+    bytes = recv(client->fd, buf, sizeof(buf), 0);
+
+    if (bytes < 0) return (-1);
+
+    if (!bytes) return (0);
 
     printf("%s\n", buf);
 
