@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <sys/poll.h>
+#include <signal.h>
 #include <string.h>
 
 int		server_poll_init(server_t *server)
@@ -120,6 +121,8 @@ int		server_poll_wait(server_t *server)
     int             i = 0;
     int             s = 0;
 
+    signal(SIGINT, server_poll_signal);
+
     memset(pfds, 0, sizeof(pfds));
 
     pfds[0].fd = server->fd;
@@ -140,8 +143,12 @@ int		server_poll_wait(server_t *server)
 
         for (i = 1; i < EVENT_MAX; i++) {
             
-            if (!(pfds[i].revents & POLLIN))
+            if (!((pfds[i].revents & POLLIN) || pfds[i].revents & POLLHUP))
                 continue ;
+
+            if (pfds[i].revents & POLLHUP) {
+                printf("on a eu un POLLHUP\n");
+            }
 
             s = server_poll_handle(&clients[i-1]);
             if (s < 0) perror("server_poll_handle");
@@ -203,4 +210,4 @@ void	server_poll_signal(int signum)
 {
     (void)signum;
     printf("[+] CTRL+C Catched !\n");
-    }
+}
