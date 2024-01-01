@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <sys/poll.h>
+#include <string.h>
 
 int		server_poll_init(server_t *server)
 {
@@ -68,6 +69,7 @@ int		server_poll_accept(fd_t sfd, struct pollfd *pfds, int *nfds)
         
         pfds[i].fd = fd;
         pfds[i].events = POLLIN;
+        break ;
     }
 
     if (i >= EVENT_MAX) {
@@ -87,9 +89,25 @@ int		server_poll_accept(fd_t sfd, struct pollfd *pfds, int *nfds)
 
     sprintf(buf, "[" GREEN "+" RST"] Server : New client connected to the server %x:%x ("GREEN"%s"RST":"GREEN"%d"RST") !\n", sin.sin_addr.s_addr, sin.sin_port, inet_ntoa(sin.sin_addr), ntohs(sin.sin_port));
 
+    printf("%s", buf);
+
     send_msg_clients(cli.id, buf, strlen(buf));
 
     return (0);
+}
+
+static void clear_client(struct pollfd  *pfds)
+{
+    client_t    *clients = NULL;
+    size_t      size = 0;
+    size_t      i = 0;
+
+    clients = get_clients(0, NULL, &size);
+
+    for (i = 0; i < size; i++)
+        close(clients[i].fd);
+    memset(pfds, 0, sizeof(struct pollfd) * EVENT_MAX);
+    memset(clients, 0, (sizeof(client_t) * size));
 }
 
 int		server_poll_wait(server_t *server)
@@ -109,8 +127,10 @@ int		server_poll_wait(server_t *server)
 
     while (0xB4DC0D3) {
 
-        if (poll(pfds, nfds, -1) < 0)
+        if (poll(pfds, nfds, -1) < 0) {
             perror("poll");
+            break ;
+        }
 
         if (pfds[0].revents & POLLIN) {
             if (server_poll_accept(server->fd, pfds, &nfds) < 0)
@@ -133,6 +153,8 @@ int		server_poll_wait(server_t *server)
         }
     }
 
+    clear_client(pfds);
+
     return (0);
 }
 
@@ -141,6 +163,7 @@ int		server_poll_handle(client_t *client)
     if (!client) return (1);
 
     char    buf[0x100];
+    char    snd[0x200];
     int     status = 0;
 
     memset(buf, 0, sizeof(buf));
@@ -151,7 +174,14 @@ int		server_poll_handle(client_t *client)
 
     if (status < 0) return (-1);
 
-    send_msg_clients(client->id, buf, strlen(buf));
+    if (!strcmp("version\n", buf))
+        return (send_version(client), 0);
+
+    memset(snd, 0, sizeof(snd));
+
+    snprintf(snd, sizeof(snd), "client (%d): %s", client->id, buf);
+
+    send_msg_clients(client->id, snd, strlen(snd));
 
     return (0);
 }
@@ -173,4 +203,4 @@ void	server_poll_signal(int signum)
 {
     (void)signum;
     printf("[+] CTRL+C Catched !\n");
-}
+    }
