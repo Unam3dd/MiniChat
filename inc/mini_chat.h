@@ -141,7 +141,7 @@ void	server_select_signal(int signum);
 int		server_poll_init(server_t *server);
 int		server_poll_wait(server_t *server);
 int		server_poll_listen(server_t *server, const char *addr, port_t port);
-int		server_poll_accept(fd_t sfd, struct pollfd *pfds);
+int		server_poll_accept(fd_t sfd, struct pollfd *pfds, int *nfds);
 int		server_poll_handle(client_t *client);
 int		server_poll_close(server_t *server);
 void	server_poll_signal(int signum);

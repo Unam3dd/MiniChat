@@ -1,4 +1,5 @@
 #include "mini_chat.h"
+#include <stdint.h>
 #include <string.h>
 #include <arpa/inet.h>
 #include <stdio.h>
@@ -19,46 +20,6 @@ int		server_poll_init(server_t *server)
     }
 
     printf("[" GREEN "+" RST"] Socket file descriptor has been created %d !\n", server->fd);
-
-    return (0);
-}
-
-int		server_poll_wait(server_t *server)
-{
-    if (!server) return (1);
-
-    static struct pollfd    pfds[EVENT_MAX];
-    client_t    *clients = get_clients(0, NULL, NULL);
-    int ready = 0, i = 0, nfds = 1;
-
-    memset(pfds, 0, sizeof(pfds));
-
-    pfds[0].fd = server->fd;
-    pfds[0].events = POLLIN;
-
-    while (0xBADC0DE) {
-
-        ready = poll(pfds, nfds, -1);
-
-        if (ready < 0) {
-            perror("poll");
-            break ;
-        }
-
-        for (i = 0; i < EVENT_MAX; i++) {
-
-            if (i == 0 && pfds[i].fd == server->fd && pfds[i].revents & POLLIN) {
-                printf("[+] Waiting accept client...\n");
-                if (server_poll_accept(server->fd, pfds) < 0)
-                    continue ;
-                nfds++;
-            }
-
-            if (pfds[i].revents & POLLIN) {
-                server_poll_handle(&clients[i]);
-            }
-        }
-    }
 
     return (0);
 }
@@ -88,35 +49,88 @@ int		server_poll_listen(server_t *server, const char *addr, port_t port)
     return (0);
 }
 
-int		server_poll_accept(fd_t sfd, struct pollfd *pfds)
+int		server_poll_accept(fd_t sfd, struct pollfd *pfds, int *nfds)
 {
     if (!pfds) return (-1);
-
-    sin_t   sin;
-    socklen_t len = sizeof(sin_t);
-    client_t    *clients = get_clients(0, NULL, NULL);
-    fd_t    fd = 0;
-    int     i = 0;
-
-    memset(&sin, 0, sizeof(sin_t));
+    char        buf[0x100];
+    client_t    cli;
+    sin_t       sin;
+    socklen_t   len = sizeof(sin_t);
+    uint32_t    i = 0;
+    int fd      = 0;
 
     fd = accept(sfd, (struct sockaddr*)&sin, &len);
 
     if (fd < 0) return (-1);
 
-    printf("[+] New client accepted %x:%x (%s:%d)\n", sin.sin_addr.s_addr, sin.sin_port, inet_ntoa(sin.sin_addr), ntohs(sin.sin_port));
-
-    printf("[+] New client accepted and added in the poll structure...\n");
-
     for (i = 1; i < EVENT_MAX; i++) {
         if (pfds[i].fd) continue ;
-
-        memset(&pfds[i], 0, sizeof(struct pollfd));
-
+        
         pfds[i].fd = fd;
-        pfds[i].events = POLLIN | POLLHUP;
-        clients[i].fd = fd;
-        clients[i].id = get_current_id();
+        pfds[i].events = POLLIN;
+    }
+
+    if (i >= EVENT_MAX) {
+        printf("[+] The server refused the client ("GREEN"%s"RST":"GREEN"%d"RST")!\n", inet_ntoa(sin.sin_addr), ntohs(sin.sin_port));
+        close(fd);
+        return (1);
+    }
+
+    cli.buf = NULL;
+    cli.fd = fd;
+    cli.size = 0;
+
+    add_client(&cli);
+    if (nfds) *nfds += 1;
+
+    memset(buf, 0, sizeof(buf));
+
+    sprintf(buf, "[" GREEN "+" RST"] Server : New client connected to the server %x:%x ("GREEN"%s"RST":"GREEN"%d"RST") !\n", sin.sin_addr.s_addr, sin.sin_port, inet_ntoa(sin.sin_addr), ntohs(sin.sin_port));
+
+    send_msg_clients(cli.id, buf, strlen(buf));
+
+    return (0);
+}
+
+int		server_poll_wait(server_t *server)
+{
+    if (!server) return (1);
+
+    struct pollfd   pfds[EVENT_MAX];
+    client_t        *clients = get_clients(0, NULL, NULL);
+    int             nfds = 1;
+    int             i = 0;
+    int             s = 0;
+
+    memset(pfds, 0, sizeof(pfds));
+
+    pfds[0].fd = server->fd;
+    pfds[0].events = POLLIN;
+
+    while (0xB4DC0D3) {
+
+        if (poll(pfds, nfds, -1) < 0)
+            perror("poll");
+
+        if (pfds[0].revents & POLLIN) {
+            if (server_poll_accept(server->fd, pfds, &nfds) < 0)
+                perror("server_poll_accept");
+            continue ;
+        }
+
+        for (i = 1; i < EVENT_MAX; i++) {
+            
+            if (!(pfds[i].revents & POLLIN))
+                continue ;
+
+            s = server_poll_handle(&clients[i-1]);
+            if (s < 0) perror("server_poll_handle");
+            if (s) {
+                remove_client(&clients[i-1]);
+                memset(&pfds[i], 0, sizeof(struct pollfd));
+                nfds--;
+            }
+        }
     }
 
     return (0);
@@ -127,17 +141,17 @@ int		server_poll_handle(client_t *client)
     if (!client) return (1);
 
     char    buf[0x100];
-    int     bytes = 0;
+    int     status = 0;
 
     memset(buf, 0, sizeof(buf));
 
-    bytes = recv(client->fd, buf, sizeof(buf), 0);
+    status = recv(client->fd, buf, sizeof(buf), 0);
+    
+    if (!status) return (1);
 
-    if (bytes < 0) return (-1);
+    if (status < 0) return (-1);
 
-    if (!bytes) return (0);
-
-    printf("%s\n", buf);
+    send_msg_clients(client->id, buf, strlen(buf));
 
     return (0);
 }
