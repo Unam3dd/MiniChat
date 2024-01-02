@@ -40,6 +40,7 @@
 #define BUF_SIZE 0x100
 #define MAX_CLIENTS 0x1000
 #define EVENT_MAX 0x1000
+#define EPOLL_EV 0x10
 
 //////////////////////////////////
 //
@@ -113,6 +114,7 @@ client_t    *gselect(bool clear, size_t *nmemb, size_t *size);
 client_t    *gclients(bool clear, size_t *nmemb, size_t *size);
 client_t	*get_clients(bool clear, size_t *nmemb, size_t *size);
 client_id_t	get_current_id(void);
+client_t    *get_client(client_t *c);
 int			add_client(client_t *client);
 int			remove_client(client_t *client);
 int			remove_client_by_id(client_id_t id);
@@ -155,7 +157,7 @@ void	server_poll_signal(int signum);
 int		server_epoll_init(server_t *server);
 int		server_epoll_wait(server_t *server);
 int		server_epoll_listen(server_t *server, const char *addr, port_t port);
-int		server_epoll_accept(fd_t sfd);
+int		server_epoll_accept(fd_t sfd, fd_t efd);
 int		server_epoll_handle(client_t *client);
 int		server_epoll_close(server_t *server);
 void	server_epoll_signal(int signum);
@@ -218,10 +220,10 @@ void	send_version(client_t *client);
 	name.flags = POLL;\
 
 #define SERVER_USE_EPOLL(name)\
-	name.cb.init = server_select_init;\
-	name.cb.listen = server_select_listen;\
-	name.cb.wait = server_select_wait;\
-	name.cb.close = server_select_close;\
+	name.cb.init = server_epoll_init;\
+	name.cb.listen = server_epoll_listen;\
+	name.cb.wait = server_epoll_wait;\
+	name.cb.close = server_epoll_close;\
 	name.flags = EPOLL;\
 
 #define SERVER_CLOSE(name) {\

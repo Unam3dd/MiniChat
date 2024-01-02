@@ -76,10 +76,11 @@ int	add_client(client_t *client)
 
 	client_t	*clients = NULL;
 	size_t		size = 0;
+    uint32_t    i = 0;
 
 	clients = get_clients(0, NULL, &size);
 
-	for (uint32_t i = 0; i < size; i++) {
+	for (i = 0; i < size; i++) {
 		if (clients[i].fd) continue ;
 
 		clients[i] = *client;
@@ -87,6 +88,8 @@ int	add_client(client_t *client)
 		client->id = clients[i].id;
 		break;
 	}
+
+    if (client && i >= size) close(client->fd);
 
 	return (0);
 }
@@ -120,6 +123,24 @@ int	remove_client(client_t *client)
 	}
 
 	return (0);
+}
+
+client_t    *get_client(client_t *client)
+{
+    if (!client) return (NULL);
+
+    client_t *arr = NULL;
+    size_t  size = 0;
+    uint32_t i = 0;
+
+    arr = get_clients(0, NULL, &size);
+
+    for (i = 0; i < size; i++) {
+        if ((arr[i].id == client->id) && (arr[i].fd == client->fd))
+            return (&arr[i]);
+    }
+
+    return (NULL);
 }
 
 int	remove_client_by_id(client_id_t id)
